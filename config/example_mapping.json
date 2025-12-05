@@ -1,0 +1,13 @@
+{
+  "request_fields": {
+    "id_art": "id",
+    "qty": "qty"
+  },
+  "response_fields": {
+    "price": "cena1",
+    "status": "info",
+    "client_name": "klient"
+  },
+  "static_params": {},
+  "default_client_field": "klient"
+}

@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Количка | GS Строймаркет</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --gs-green: #9ccb3b;
+            --gs-dark: #231f20;
+            --gs-grey: #f8f9fa;
+        }
+        body { font-family: 'Montserrat', sans-serif; background-color: white; color: #333; }
+
+        /* HEADER */
+        .main-header { padding: 15px 0; background: white; border-bottom: 1px solid #eee; position: sticky; top:0; z-index: 100; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .search-input { border-radius: 50px; border: 1px solid #ddd; background: #fcfcfc; }
+        
+        /* CART ITEM */
+        .cart-item-container { border-bottom: 1px solid #eee; padding: 20px 0; transition: background 0.3s; }
+        .cart-item-container.updated-b2b { background-color: #f0fdf4; border-left: 5px solid var(--gs-green); padding-left: 15px; }
+        .product-name { font-weight: 700; color: var(--gs-dark); text-decoration: none; font-size: 1rem; }
+        
+        /* PRICES */
+        .price-final { font-weight: 800; font-size: 1.1rem; color: var(--gs-dark); }
+        .price-old { text-decoration: line-through; color: #999; font-size: 0.9rem; margin-right: 8px; }
+        .badge-b2b { background: var(--gs-green); color: white; padding: 3px 8px; border-radius: 4px; font-size: 0.7rem; text-transform: uppercase; font-weight: bold; }
+        .badge-std { background: #eee; color: #777; padding: 3px 8px; border-radius: 4px; font-size: 0.7rem; }
+
+        /* SUMMARY & DASHBOARD */
+        .summary-box { background: #fcfcfc; padding: 25px; border-radius: 10px; border: 1px solid #eee; }
+        
+        /* SUCCESS DASHBOARD (HIDDEN INITIALLY) */
+        #success-dashboard {
+            display: none;
+            background: linear-gradient(135deg, #231f20 0%, #3a3a3a 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            animation: slideDown 0.5s ease-out;
+        }
+        @keyframes slideDown { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        .client-name-display { font-size: 1.1rem; font-weight: 700; color: var(--gs-green); margin-bottom: 5px; }
+        .stats-row { display: flex; gap: 15px; font-size: 0.85rem; opacity: 0.9; margin-top: 10px; }
+        
+        .btn-gs-primary { background-color: var(--gs-green); color: white; font-weight: 800; border-radius: 50px; padding: 12px; width: 100%; border: none; text-transform: uppercase; transition: 0.2s; }
+        .btn-gs-primary:hover { background-color: #8bb832; transform: translateY(-1px); }
+
+        /* LOADING */
+        #loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.95); z-index: 9999; display: none; align-items: center; justify-content: center; flex-direction: column; }
+        
+        /* TERMINAL */
+        #tech-console { background: #111; color: #0f0; font-family: monospace; padding: 10px; margin-top: 15px; border-radius: 5px; height: 150px; overflow-y: auto; display: none; font-size: 0.7rem; }
+    </style>
+</head>
+<body>
+
+    <!-- HEADER -->
+    <header class="main-header">
+        <div class="container d-flex align-items-center justify-content-between">
+            <img src="https://assets.jobs.bg/assets/logo/2024-10-17/b_91d4669f29f5713e445998d7526ced46.jpg" height="45" alt="Logo">
+            <div class="d-none d-md-block w-50 mx-4">
+                <input type="text" class="form-control search-input py-2" placeholder="Търсене на продукти...">
+            </div>
+            <div class="fs-5 text-secondary">
+                <i class="fa fa-shopping-cart"></i> 
+                <span class="badge bg-success rounded-pill" style="font-size: 0.6rem; vertical-align: top;">{{ cart|length }}</span>
+            </div>
+        </div>
+    </header>
+
+    <div class="container mt-4 mb-5">
+        
+        <!-- SUCCESS DASHBOARD (Appears after Calc) -->
+        <div id="success-dashboard">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="text-uppercase small text-muted">B2B Профил:</div>
+                    <div class="client-name-display" id="dash-client-name">Loading...</div>
+                </div>
+                <div class="text-end">
+                    <div class="h2 mb-0 fw-bold" style="color:var(--gs-green);" id="dash-total">0.00 лв.</div>
+                    <small>Крайна сума с ДДС</small>
+                </div>
+            </div>
+            <hr style="border-color: #555;">
+            <div class="stats-row">
+                <span><i class="fa fa-clock me-1"></i> Време: <strong id="dash-time" class="text-white">0.00s</strong></span>
+                <span><i class="fa fa-box me-1"></i> Продукти: <strong id="dash-count" class="text-white">0</strong></span>
+                <span class="ms-auto text-success fw-bold" id="dash-savings" style="display:none;">
+                    <i class="fa fa-check-circle me-1"></i> Спестени: <span id="dash-savings-val">0</span> лв.
+                </span>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- LEFT: PRODUCTS -->
+            <div class="col-lg-8">
+                <h4 class="fw-bold mb-3">Количка</h4>
+                <div id="cart-container">
+                    {% for item in cart %}
+                    <div class="cart-item-container" id="item-index-{{ loop.index0 }}" data-base="{{ item.base_price }}" data-qty="{{ item.qty }}">
+                        <div class="row align-items-center">
+                            <div class="col-2 text-center">
+                                <img src="https://placehold.co/80x80/f5f5f5/ddd?text={{ item.img }}" class="img-fluid rounded">
+                            </div>
+                            <div class="col-6">
+                                <a href="#" class="product-name">{{ item.name }}</a>
+                                <div class="text-muted small">Код: {{ item.id }}</div>
+                            </div>
+                            <div class="col-4 text-end">
+                                <!-- Price Logic Display -->
+                                <div class="price-display-box">
+                                    <div class="price-old d-none"></div>
+                                    <span class="price-final">{{ "%.2f"|format(item.base_price * item.qty) }} лв.</span>
+                                </div>
+                                <div class="mt-1">
+                                    <span class="badge-status badge-std">СТАНДАРТНА</span>
+                                </div>
+                                <div class="small text-muted mt-1">{{ item.qty }} бр. x {{ item.base_price }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- RIGHT: SUMMARY -->
+            <div class="col-lg-4">
+                <div class="summary-box sticky-top" style="top: 100px;">
+                    <h5 class="fw-bold mb-3">Обобщение</h5>
+                    
+                    <div class="mb-3">
+                        <label class="small fw-bold mb-1">Корпоративен ЕИК:</label>
+                        <div class="input-group">
+                            <input type="text" id="eikInput" class="form-control" value="8101191065">
+                            <button class="btn btn-dark" onclick="calculateB2B()">
+                                <i class="fa fa-refresh"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between mb-2 small">
+                        <span>Междинна сума:</span>
+                        <span id="subtotal-val">{{ "%.2f"|format(initial_total) }} лв.</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-3 small border-bottom pb-2">
+                        <span>ДДС (20%):</span>
+                        <span id="vat-val">{{ "%.2f"|format(initial_total * 0.20) }} лв.</span>
+                    </div>
+                    <div class="d-flex justify-content-between fw-bold fs-5 mb-4">
+                        <span>ОБЩО:</span>
+                        <span id="total-val">{{ "%.2f"|format(initial_total * 1.20) }} лв.</span>
+                    </div>
+
+                    <button class="btn-gs-primary shadow-sm" onclick="calculateB2B()">
+                        ЗАВЪРШЕТЕ ПОРЪЧКАТА
+                    </button>
+                    
+                    <div class="text-center mt-3">
+                        <a href="#" class="small text-muted text-decoration-none" onclick="toggleConsole()">
+                            <i class="fa fa-terminal me-1"></i> System Logs
+                        </a>
+                    </div>
+                    <div id="tech-console">// Ready...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- LOADING OVERLAY -->
+    <div id="loading-overlay">
+        <div class="spinner-border text-success mb-3" style="width: 3rem; height: 3rem;"></div>
+        <h4 class="fw-bold">GS Stroy ERP</h4>
+        <p class="text-muted">Калкулиране на индивидуални цени...</p>
+    </div>
+
+    <script>
+        function toggleConsole() {
+            const c = document.getElementById('tech-console');
+            c.style.display = c.style.display === 'none' ? 'block' : 'none';
+        }
+
+        async function calculateB2B() {
+            const eik = document.getElementById('eikInput').value;
+            const overlay = document.getElementById('loading-overlay');
+            const consoleDiv = document.getElementById('tech-console');
+            const dashboard = document.getElementById('success-dashboard');
+            
+            overlay.style.display = 'flex';
+            consoleDiv.innerHTML = '// Requesting Data from 109.104.213.2...\n';
+
+            try {
+                const response = await fetch('/calculate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ eik: eik })
+                });
+                const data = await response.json();
+
+                // 1. UPDATE PRODUCTS LIST
+                data.items.forEach(item => {
+                    const container = document.getElementById('item-index-' + item.index);
+                    if(container) {
+                        const priceFinal = container.querySelector('.price-final');
+                        const priceOld = container.querySelector('.price-old');
+                        const badge = container.querySelector('.badge-status');
+                        
+                        if (item.is_b2b) {
+                            // Update UI for B2B Success
+                            const qty = parseFloat(container.getAttribute('data-qty'));
+                            const base = parseFloat(container.getAttribute('data-base'));
+                            const oldTotal = base * qty;
+                            
+                            priceOld.classList.remove('d-none');
+                            priceOld.innerText = oldTotal.toFixed(2) + ' лв.';
+                            priceFinal.innerText = item.line_total.toFixed(2) + ' лв.';
+                            priceFinal.style.color = "var(--gs-green)";
+                            
+                            badge.className = "badge-status badge-b2b";
+                            badge.innerText = "B2B ПАРТНЬОР";
+                            
+                            container.classList.add('updated-b2b');
+                        } else {
+                            // Handle Duplicate/Error visually without breaking
+                            badge.className = "badge-status bg-warning text-dark";
+                            badge.innerText = "СТАНДАРТНА"; 
+                        }
+                        
+                        // Logs
+                        item.logs.forEach(l => {
+                            let color = l.includes("OK") ? "#0f0" : (l.includes("ERR") ? "#f55" : "#ccc");
+                            consoleDiv.innerHTML += `<div style="color:${color}">${l}</div>`;
+                        });
+                    }
+                });
+
+                // 2. UPDATE SIDEBAR TOTALS
+                document.getElementById('subtotal-val').innerText = data.grand_total.toFixed(2) + ' лв.';
+                document.getElementById('vat-val').innerText = data.vat.toFixed(2) + ' лв.';
+                document.getElementById('total-val').innerText = data.total_with_vat.toFixed(2) + ' лв.';
+
+                // 3. SHOW DASHBOARD (THE WOW EFFECT)
+                document.getElementById('dash-client-name').innerText = data.client_name;
+                document.getElementById('dash-time').innerText = data.duration + 's';
+                document.getElementById('dash-count').innerText = data.item_count;
+                document.getElementById('dash-total').innerText = data.total_with_vat.toFixed(2) + ' лв.';
+                
+                if (data.savings > 0) {
+                    document.getElementById('dash-savings').style.display = 'inline';
+                    document.getElementById('dash-savings-val').innerText = data.savings.toFixed(2);
+                }
+                
+                dashboard.style.display = 'block';
+                // Scroll to top to see dashboard
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+
+            } catch (err) {
+                alert('Connection Error!');
+            } finally {
+                overlay.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
